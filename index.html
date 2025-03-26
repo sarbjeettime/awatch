@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accelerated Digital Watch</title>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: #0f0f1a;
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+        }
+        .watch-container {
+            position: relative;
+        }
+        .watch {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border: 8px solid #ff0000;
+            border-radius: 20px;
+            padding: 30px 50px;
+            font-size: 4rem;
+            box-shadow: 
+                0 0 20px rgba(255, 0, 0, 0.8),
+                0 0 40px rgba(255, 0, 0, 0.5),
+                inset 0 0 10px rgba(255, 255, 255, 0.1);
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            min-width: 320px;
+        }
+        .day-display {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #ff9900;
+            text-shadow: 0 0 10px rgba(255, 153, 0, 0.7);
+        }
+        .time-display {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 3px;
+        }
+        .special-period {
+            font-size: 1.8rem;
+            margin-top: 15px;
+            color: #ff66ff;
+            text-shadow: 0 0 10px rgba(255, 102, 255, 0.7);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .emoji {
+            font-size: 2.2rem;
+        }
+        .watch-reflection {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            right: 20px;
+            height: 10px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0));
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .watch-label {
+            position: absolute;
+            bottom: -25px;
+            font-size: 1rem;
+            color: #aaaaaa;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="watch-container">
+        <div class="watch">
+            <div class="watch-reflection"></div>
+            <div class="day-display" id="day-display">Day 1</div>
+            <div class="time-display" id="time-display">00:00</div>
+            <div class="special-period" id="special-period"></div>
+            <div class="watch-label">Accelerated Time</div>
+        </div>
+    </div>
+    <script>
+        const startTimes = [
+         [6, 30], [8, 45], [11, 0], [14, 0],
+            [16, 15], [18, 30], [20, 45]
+        ];
+        
+        const specialPeriods = {
+            "preparation": {
+                start: [6,0],
+                end: [6, 30],
+                label: "PREPARATION",
+                emoji: "⏰"
+            },
+            "holiday": {
+                start: [12, 45],
+                end: [14, 0],
+                label: "MID HOLIDAY",
+                emoji: "🎉"
+            }
+        };
+        
+        let lastBeepHour = -1;
+        
+        function beep() {
+            const audio = new Audio('ring.mp3');
+            audio.volume = 1.0; // High volume
+            audio.play();
+        }
+        
+        function isInSpecialPeriod(hours, minutes) {
+            const currentMinutes = hours * 60 + minutes;
+            
+            for (const period in specialPeriods) {
+                const { start, end } = specialPeriods[period];
+                const startMinutes = start[0] * 60 + start[1];
+                const endMinutes = end[0] * 60 + end[1];
+                
+                if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+                    return specialPeriods[period];
+                }
+            }
+            
+            return null;
+        }
+        
+        function getVirtualTime() {
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+            const currentSeconds = now.getSeconds();
+            const currentTimeInSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
+            
+            for (let i = 0; i < startTimes.length; i++) {
+                const [startHour, startMinute] = startTimes[i];
+                const startTimeInSeconds = startHour * 3600 + startMinute * 60;
+                
+                const nextIndex = (i + 1) % startTimes.length;
+                const [nextStartHour, nextStartMinute] = startTimes[nextIndex];
+                const nextStartTimeInSeconds = nextStartHour * 3600 + nextStartMinute * 60;
+                
+                // Adjust for day boundary
+                let adjustedNextStartTime = nextStartTimeInSeconds;
+                if (nextIndex === 0) {
+                    adjustedNextStartTime += 24 * 3600; // Add a day
+                }
+                
+                if (currentTimeInSeconds >= startTimeInSeconds && 
+                    (i === startTimes.length - 1 || currentTimeInSeconds < nextStartTimeInSeconds || 
+                     (nextIndex === 0 && currentTimeInSeconds >= startTimeInSeconds))) {
+                    
+                    // Calculate elapsed seconds
+                    let elapsedSeconds = currentTimeInSeconds - startTimeInSeconds;
+                    if (elapsedSeconds < 0) {
+                        elapsedSeconds += 24 * 3600; // Add a day if negative
+                    }
+                    
+                    // Convert to accelerated time (15 seconds = 1 minute)
+                    const acceleratedMinutes = Math.floor(elapsedSeconds / 15);
+                    const acceleratedHours = Math.floor(acceleratedMinutes / 60);
+                    const remainingMinutes = acceleratedMinutes % 60;
+                    
+                    // Check if hour changed and beep
+                    if (acceleratedHours !== lastBeepHour) {
+                        beep();
+                        lastBeepHour = acceleratedHours;
+                    }
+                    
+                    // Check for special period
+                    const specialPeriod = isInSpecialPeriod(currentHours, currentMinutes);
+                    
+                    return {
+                        day: i + 1,
+                        hours: acceleratedHours,
+                        minutes: remainingMinutes,
+                        specialPeriod: specialPeriod
+                    };
+                }
+            }
+            
+            return { day: 1, hours: 0, minutes: 0, specialPeriod: null }; // Fallback
+        }
+        
+        function updateWatch() {
+            const time = getVirtualTime();
+            document.getElementById('day-display').textContent = `Day ${time.day}`;
+            document.getElementById('time-display').textContent = 
+                `${time.hours}:${time.minutes < 10 ? '0' : ''}${time.minutes}`;
+                
+            const specialPeriodElement = document.getElementById('special-period');
+            if (time.specialPeriod) {
+                specialPeriodElement.innerHTML = `<span class="emoji">${time.specialPeriod.emoji}</span> ${time.specialPeriod.label}`;
+                specialPeriodElement.style.display = 'flex';
+            } else {
+                specialPeriodElement.style.display = 'none';
+            }
+        }
+        
+        setInterval(updateWatch, 1000);
+        updateWatch(); // Initial call
+    </script>
+</body>
+</html>
