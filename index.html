@@ -280,90 +280,90 @@
         updateWatch(); // Initial call
     </script>
     <script type="module">
-        // Import Firebase SDK
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-        import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
-      
-        // Firebase configuration
-        const firebaseConfig = {
-          apiKey: "AIzaSyBaypeam_VBUqWhCE1RsWQZKN8sTCwrS1I",
-          authDomain: "qawatchfirebase.firebaseapp.com",
-          databaseURL: "https://qawatchfirebase-default-rtdb.firebaseio.com/",
-          projectId: "qawatchfirebase",
-          storageBucket: "qawatchfirebase.firebasestorage.app",
-          messagingSenderId: "231400531714",
-          appId: "1:231400531714:web:6d78a634306b996b4f041b",
-          measurementId: "G-2EFTY36K5C"
-        };
-      
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-      
-        // Function to save watch time
-        function saveWatchTime(day, hours, minutes) {
-          set(ref(db, "watch/"), {
-            day: day,
-            hours: hours,
-            minutes: minutes
-          });
+  // Import Firebase SDK
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
+
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyBaypeam_VBUqWhCE1RsWQZKN8sTCwrS1I",
+    authDomain: "qawatchfirebase.firebaseapp.com",
+    databaseURL: "https://qawatchfirebase-default-rtdb.firebaseio.com/",
+    projectId: "qawatchfirebase",
+    storageBucket: "qawatchfirebase.firebasestorage.app",
+    messagingSenderId: "231400531714",
+    appId: "1:231400531714:web:6d78a634306b996b4f041b",
+    measurementId: "G-2EFTY36K5C"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Function to save watch time
+  function saveWatchTime(day, hours, minutes) {
+    set(ref(db, "watch/"), {
+      day: day,
+      hours: hours,
+      minutes: minutes
+    });
+  }
+
+  // Listen for updates in real-time
+  onValue(ref(db, "watch/"), (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      document.getElementById('day-display').textContent = `Day ${data.day}`;
+      document.getElementById('time-display').textContent = `${data.hours}:${data.minutes < 10 ? '0' : ''}${data.minutes}`;
+    }
+  });
+
+  // Function to sync the table data
+  function saveTableData() {
+    let tableData = {};
+    document.querySelectorAll(".data-table tr").forEach((row, index) => {
+      if (index === 0) return; // Skip table header
+      const day = row.cells[0].innerText;
+      const work = row.cells[1].querySelector("input").value;
+      const result = row.cells[2].querySelector("input").value;
+      tableData[day] = { work, result };
+    });
+
+    set(ref(db, "tableData/"), tableData);
+  }
+
+  // Listen for table data updates
+  onValue(ref(db, "tableData/"), (snapshot) => {
+    if (snapshot.exists()) {
+      const tableData = snapshot.val();
+      document.querySelectorAll(".data-table tr").forEach((row, index) => {
+        if (index === 0) return; // Skip header
+        const day = row.cells[0].innerText;
+        if (tableData[day]) {
+          row.cells[1].querySelector("input").value = tableData[day].work;
+          row.cells[2].querySelector("input").value = tableData[day].result;
         }
-      
-        // Listen for updates in real-time
-        onValue(ref(db, "watch/"), (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.val();
-            document.getElementById('day-display').textContent = `Day ${data.day}`;
-            document.getElementById('time-display').textContent = `${data.hours}:${data.minutes < 10 ? '0' : ''}${data.minutes}`;
-          }
-        });
-      
-        // Function to sync the table data
-        function saveTableData() {
-          let tableData = {};
-          document.querySelectorAll(".data-table tr").forEach((row, index) => {
-            if (index === 0) return; // Skip table header
-            const day = row.cells[0].innerText;
-            const work = row.cells[1].querySelector("input").value;
-            const result = row.cells[2].querySelector("input").value;
-            tableData[day] = { work, result };
-          });
-      
-          set(ref(db, "tableData/"), tableData);
-        }
-      
-        // Listen for table data updates
-        onValue(ref(db, "tableData/"), (snapshot) => {
-          if (snapshot.exists()) {
-            const tableData = snapshot.val();
-            document.querySelectorAll(".data-table tr").forEach((row, index) => {
-              if (index === 0) return; // Skip header
-              const day = row.cells[0].innerText;
-              if (tableData[day]) {
-                row.cells[1].querySelector("input").value = tableData[day].work;
-                row.cells[2].querySelector("input").value = tableData[day].result;
-              }
-            });
-          }
-        });
-      
-        // Attach event listener to update Firebase when table changes
-        document.querySelectorAll(".data-table input").forEach(input => {
-          input.addEventListener("input", saveTableData);
-        });
-      
-        // Hook into existing updateWatch function
-        function updateWatch() {
-          const time = getVirtualTime();
-          document.getElementById('day-display').textContent = `Day ${time.day}`;
-          document.getElementById('time-display').textContent = 
-            `${time.hours}:${time.minutes < 10 ? '0' : ''}${time.minutes}`;
-      
-          saveWatchTime(time.day, time.hours, time.minutes); // Save time to Firebase
-        }
-      
-        setInterval(updateWatch, 1000);
-      </script>
-      
+      });
+    }
+  });
+
+  // Attach event listener to update Firebase when table changes
+  document.querySelectorAll(".data-table input").forEach(input => {
+    input.addEventListener("input", saveTableData);
+  });
+
+  // Hook into existing updateWatch function
+  function updateWatch() {
+    const time = getVirtualTime();
+    document.getElementById('day-display').textContent = `Day ${time.day}`;
+    document.getElementById('time-display').textContent = 
+      `${time.hours}:${time.minutes < 10 ? '0' : ''}${time.minutes}`;
+
+    saveWatchTime(time.day, time.hours, time.minutes); // Save time to Firebase
+  }
+
+  setInterval(updateWatch, 1000);
+</script>
+
 </body>
 </html>
